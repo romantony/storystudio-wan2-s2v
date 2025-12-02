@@ -75,29 +75,57 @@ def flash_attention(*args, **kwargs):
     attention_path.write_text(attention_code)
     print("✓ attention.py patched")
     
-    # Phase 2: Patch model_s2v.py
-    print("\n[2/3] Patching wan/s2v/model_s2v.py...")
-    model_path = wan_path / "wan/s2v/model_s2v.py"
-    
-    if not model_path.exists():
-        raise RuntimeError(f"model_s2v.py not found at {model_path}")
-    
-    model_code = model_path.read_text()
-    
-    # Replace flash_attention imports
-    import_patterns = [
-        'from ..modules.attention import flash_attention',
-        'from wan.modules.attention import flash_attention',
+    # Phase 2: Patch model files that import flash_attention
+    print("\n[2/3] Patching model files that import flash_attention...")
+    candidates = [
+        wan_path / "wan/s2v/model_s2v.py",
+        wan_path / "wan/tasks/s2v/model_s2v.py",
+        wan_path / "wan/models/s2v.py",
     ]
-    for pattern in import_patterns:
-        if pattern in model_code:
-            model_code = model_code.replace(
-                pattern,
-                'from ..modules.attention import attention as flash_attention  # [PATCHED]'
+
+    patched_any = False
+
+    for candidate in candidates:
+        if candidate.exists():
+            code = candidate.read_text()
+            before = code
+            code = code.replace(
+                'from ..modules.attention import flash_attention',
+                'from ..modules.attention import attention as flash_attention'
             )
-    
-    model_path.write_text(model_code)
-    print("✓ model_s2v.py patched")
+            code = code.replace(
+                'from wan.modules.attention import flash_attention',
+                'from wan.modules.attention import attention as flash_attention'
+            )
+            if code != before:
+                candidate.write_text(code)
+                print(f"✓ Patched imports in {candidate}")
+                patched_any = True
+
+    # Fallback: scan repository for any python files importing flash_attention
+    if not patched_any:
+        print("No known model_s2v.py paths found, scanning repository for imports...")
+        for py in wan_path.rglob('*.py'):
+            try:
+                text = py.read_text()
+            except Exception:
+                continue
+            if ('from wan.modules.attention import flash_attention' in text or
+                'from ..modules.attention import flash_attention' in text):
+                updated = text.replace(
+                    'from wan.modules.attention import flash_attention',
+                    'from wan.modules.attention import attention as flash_attention'
+                ).replace(
+                    'from ..modules.attention import flash_attention',
+                    'from ..modules.attention import attention as flash_attention'
+                )
+                if updated != text:
+                    py.write_text(updated)
+                    print(f"✓ Patched imports in {py}")
+                    patched_any = True
+
+    if not patched_any:
+        print("! Warning: No files required import patching for flash_attention.")
     
     # Phase 3: Patch shared model.py
     print("\n[3/3] Patching wan/modules/model.py...")

@@ -1,0 +1,68 @@
+# .dockerignore
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Documentation (not needed in container)
+*.md
+docs/
+
+# Test files
+test_*.py
+tests/
+*.test
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Models (will be downloaded at runtime)
+models/
+*.safetensors
+*.bin
+*.pth
+*.pt
+
+# Outputs
+outputs/
+*.mp4
+*.png
+*.jpg
+*.wav
+*.mp3
+
+# Logs
+*.log
+logs/
+
+# Scripts not needed in container
+build.sh
+deploy.sh
+build.bat
+deploy.bat

@@ -1,9 +1,0 @@
-"""
-BUILD file for patches directory
-"""
-
-filegroup(
-    name = "all",
-    srcs = glob(["*.py", "*.md"]),
-    visibility = ["//visibility:public"],
-)

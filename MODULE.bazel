@@ -1,9 +1,0 @@
-"""
-Bazel workspace for Wan2.2 S2V Docker build
-Simple approach using shell rules to wrap Docker commands
-"""
-
-module(
-    name = "wan2_s2v",
-    version = "1.0.0",
-)

@@ -1,25 +1,9 @@
 """
-Bazel module configuration for Wan2.2 S2V Docker build
+Bazel workspace for Wan2.2 S2V Docker build
+Simple approach using shell rules to wrap Docker commands
 """
 
 module(
     name = "wan2_s2v",
     version = "1.0.0",
 )
-
-# OCI rules for building container images
-bazel_dep(name = "rules_oci", version = "2.0.0")
-bazel_dep(name = "rules_pkg", version = "1.0.1")
-
-# Docker toolchain
-oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
-
-# Pull base image
-oci.pull(
-    name = "cuda_base",
-    digest = "sha256:d2b9d4f7f93d0b9e7d9e5c1a8f5c9e3f8f3f9e3f8f3f9e3f8f3f9e3f8f3f9e3f",
-    image = "nvidia/cuda",
-    platforms = ["linux/amd64"],
-    tag = "12.1.0-cudnn8-devel-ubuntu22.04",
-)
-use_repo(oci, "cuda_base")

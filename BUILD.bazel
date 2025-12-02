@@ -1,37 +1,24 @@
 """
 Bazel build rules for Wan2.2 S2V Docker image
+Uses shell rules to wrap Docker build and push commands
 """
 
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-
-# Package all project files
-pkg_tar(
-    name = "app_layer",
-    srcs = [
-        "Dockerfile",
-        "requirements.txt",
-        "app.py",
-        "handler.py",
-        "start.sh",
-        "//patches:all",
-    ],
-    package_dir = "/workspace",
+# Build Docker image
+genrule(
+    name = "build_image",
+    srcs = glob(["**/*"], exclude=["bazel-*/**"]),
+    outs = ["build_complete.txt"],
+    cmd = """
+        cd $$(dirname $(location Dockerfile))
+        docker build -t romantony/wan2-s2v:1.0.0 .
+        docker tag romantony/wan2-s2v:1.0.0 romantony/wan2-s2v:latest
+        echo "Build complete" > $@
+    """,
+    local = 1,
 )
 
-# Build the OCI image from Dockerfile
-oci_image(
-    name = "wan2_s2v_image",
-    base = "@cuda_base",
-    tars = [":app_layer"],
-    entrypoint = ["python3", "-u", "handler.py"],
-    workdir = "/workspace",
-)
-
-# Push to Docker Hub
-oci_push(
+# Push image to Docker Hub
+sh_binary(
     name = "push_image",
-    image = ":wan2_s2v_image",
-    repository = "index.docker.io/romantony/wan2-s2v",
-    remote_tags = ["latest", "1.0.0"],
+    srcs = ["push_docker.sh"],
 )

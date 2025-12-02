@@ -2,7 +2,7 @@
 Bazel build rules for Wan2.2 S2V Docker image
 """
 
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push", "oci_tarball")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 # Package all project files
@@ -34,11 +34,4 @@ oci_push(
     image = ":wan2_s2v_image",
     repository = "index.docker.io/romantony/wan2-s2v",
     remote_tags = ["latest", "1.0.0"],
-)
-
-# Create tarball for local testing
-oci_tarball(
-    name = "wan2_s2v_tarball",
-    image = ":wan2_s2v_image",
-    repo_tags = ["romantony/wan2-s2v:latest"],
 )

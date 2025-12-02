@@ -21,3 +21,6 @@ id_ed25519
 id_rsa
 runpod
 runpod.pub
+\n+# Build/test artifacts
+test_run.out
+*.out

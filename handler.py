@@ -9,14 +9,10 @@ import base64
 import os
 import time
 import boto3
+import requests
 from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
-
-# Apply patches BEFORE any Wan2.2 imports
-from patches.apply_patches import apply_flashattention_patches
-apply_flashattention_patches()
-
 from huggingface_hub import snapshot_download
 
 # Configuration
@@ -102,8 +98,8 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
     
     Expected job input:
     {
-        "image": "base64_encoded_image",
-        "audio": "base64_encoded_audio",
+        "image": "base64_encoded_image OR url",
+        "audio": "base64_encoded_audio OR url",
         "prompt": "optional text prompt",
         "resolution": "480p" or "720p",
         "sample_steps": 20-50 (default 30)
@@ -111,7 +107,7 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
     
     Returns:
     {
-        "video": "base64_encoded_video",
+        "video_url": "https://parentearn.com/VideoGen/...",
         "generation_time": float,
         "video_size_mb": float,
         "resolution": str,
@@ -127,8 +123,8 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             return {"error": "Missing required inputs: image and audio"}
         
         # Get parameters
-        image_base64 = job_input["image"]
-        audio_base64 = job_input["audio"]
+        image_input = job_input["image"]
+        audio_input = job_input["audio"]
         prompt = job_input.get("prompt", "")
         resolution = job_input.get("resolution", "720p")
         sample_steps = job_input.get("sample_steps", 30)
@@ -144,9 +140,23 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
         if not model_config.model_loaded:
             model_config.load_model()
         
-        # Decode base64 inputs
-        image_bytes = base64.b64decode(image_base64)
-        audio_bytes = base64.b64decode(audio_base64)
+        # Handle image input (URL or base64)
+        if image_input.startswith(('http://', 'https://')):
+            print(f"Downloading image from URL: {image_input}")
+            response = requests.get(image_input, timeout=30)
+            response.raise_for_status()
+            image_bytes = response.content
+        else:
+            image_bytes = base64.b64decode(image_input)
+        
+        # Handle audio input (URL or base64)
+        if audio_input.startswith(('http://', 'https://')):
+            print(f"Downloading audio from URL: {audio_input}")
+            response = requests.get(audio_input, timeout=30)
+            response.raise_for_status()
+            audio_bytes = response.content
+        else:
+            audio_bytes = base64.b64decode(audio_input)
         
         # Create temp directory
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -226,8 +236,16 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
         traceback.print_exc()
         return {"error": str(e)}
 
-# Initialize model on container startup
+# Initialize on container startup
 print("Initializing Wan2.2 S2V handler...")
+
+# Apply FlashAttention patches (must be done before model loading)
+print("Applying FlashAttention compatibility patches...")
+from patches.apply_patches import apply_flashattention_patches
+apply_flashattention_patches()
+print("✓ Patches applied")
+
+# Load model
 model_config.load_model()
 print("✓ Handler ready")
 

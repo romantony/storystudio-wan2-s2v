@@ -13,12 +13,6 @@ import boto3
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
-
-# Apply patches BEFORE any Wan2.2 imports
-from patches.apply_patches import apply_flashattention_patches
-apply_flashattention_patches()
-
-# Now safe to import Wan2.2 modules
 from huggingface_hub import snapshot_download
 
 app = FastAPI(title="Wan2.2 S2V API", version="1.0.0")
@@ -265,4 +259,16 @@ async def generate(
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Apply FlashAttention patches before starting server
+    print("Applying FlashAttention compatibility patches...")
+    from patches.apply_patches import apply_flashattention_patches
+    apply_flashattention_patches()
+    print("✓ Patches applied")
+    
+    # Load model
+    print("Loading model...")
+    config.load_model()
+    print("✓ Model loaded")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)

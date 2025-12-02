@@ -1,0 +1,23 @@
+infinitytalker.pem
+
+# Test files
+test_*.sh
+check_status.sh
+monitor_job.sh
+last_job_id.txt
+
+# Media files
+*.mp3
+*.mp4
+*.wav
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# SSH keys
+*.pub
+id_ed25519
+id_rsa
+runpod
+runpod.pub

@@ -8,8 +8,10 @@ import tempfile
 import base64
 import os
 import time
+import boto3
 from pathlib import Path
 from typing import Dict, Any
+from datetime import datetime
 
 # Apply patches BEFORE any Wan2.2 imports
 from patches.apply_patches import apply_flashattention_patches
@@ -21,6 +23,14 @@ from huggingface_hub import snapshot_download
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
 MODEL_CACHE_DIR = os.getenv("MODEL_CACHE_DIR", "/runpod-volume/models")
 WAN_DIR = "/workspace/Wan2.2"
+
+# R2 Configuration
+R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "620baa808df08b1a30d448989365f7dd")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "a69ca34cdcdeb60bad5ed1a07a0dd29d")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "751a95202a9fa1eb9ff7d45e0bba5b57b0c2d1f0d45129f5f67c2486d5d4ae24")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "storystudio")
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "parentearn.com")
+R2_FOLDER = "VideoGen"
 
 # Resolution mapping
 RESOLUTION_MAP = {
@@ -58,6 +68,33 @@ class ModelConfig:
         self.model_loaded = True
 
 model_config = ModelConfig()
+
+# Initialize R2 client
+def get_r2_client():
+    """Initialize and return R2 S3 client"""
+    return boto3.client(
+        's3',
+        endpoint_url=f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com',
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name='auto'
+    )
+
+def upload_to_r2(file_path: str, filename: str) -> str:
+    """Upload file to R2 and return public URL"""
+    s3_client = get_r2_client()
+    
+    # Generate unique filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    r2_key = f"{R2_FOLDER}/{timestamp}_{filename}"
+    
+    # Upload file
+    with open(file_path, 'rb') as f:
+        s3_client.upload_fileobj(f, R2_BUCKET_NAME, r2_key)
+    
+    # Return public URL
+    public_url = f"https://{R2_PUBLIC_URL}/{r2_key}"
+    return public_url
 
 def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -160,9 +197,13 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Get most recent video
             video_path = max(video_files, key=lambda p: p.stat().st_mtime)
             
-            # Encode to base64
-            video_bytes = video_path.read_bytes()
-            video_base64 = base64.b64encode(video_bytes).decode('utf-8')
+            # Get video size before upload
+            video_size_mb = round(video_path.stat().st_size / 1024 / 1024, 2)
+            
+            # Upload to R2
+            print(f"Uploading video to R2...")
+            video_filename = f"s2v_{resolution}_{sample_steps}steps.mp4"
+            video_url = upload_to_r2(str(video_path), video_filename)
             
             # Clean up generated file
             video_path.unlink()
@@ -170,9 +211,9 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             generation_time = time.time() - start_time
             
             return {
-                "video": video_base64,
+                "video_url": video_url,
                 "generation_time": round(generation_time, 2),
-                "video_size_mb": round(len(video_bytes) / 1024 / 1024, 2),
+                "video_size_mb": video_size_mb,
                 "resolution": resolution,
                 "sample_steps": sample_steps
             }

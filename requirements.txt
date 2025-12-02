@@ -35,5 +35,8 @@ easydict
 ftfy
 requests
 
+# Cloud storage
+boto3
+
 # RunPod SDK
 runpod

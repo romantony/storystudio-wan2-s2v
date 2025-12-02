@@ -9,16 +9,18 @@ genrule(
     srcs = glob(["**/*"], exclude=["bazel-*/**"]),
     outs = ["build_complete.txt"],
     cmd = """
-        cd $$(dirname $(location Dockerfile))
-        docker build -t romantony/wan2-s2v:1.0.0 .
+        BUILD_DIR=$$(pwd)
+        docker build -t romantony/wan2-s2v:1.0.0 $$BUILD_DIR
         docker tag romantony/wan2-s2v:1.0.0 romantony/wan2-s2v:latest
         echo "Build complete" > $@
     """,
     local = 1,
+    tags = ["no-sandbox"],
 )
 
 # Push image to Docker Hub
 sh_binary(
     name = "push_image",
     srcs = ["push_docker.sh"],
+    data = [":build_image"],
 )

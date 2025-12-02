@@ -42,40 +42,26 @@ git clone https://github.com/romantony/storystudio-wan2-s2v.git
 cd storystudio-wan2-s2v
 ```
 
-### 4. Login to Docker Hub
+## Quick Commands (Run on EC2 via Git Bash)
 
 ```bash
+# 1. Update repository
+git pull origin main
+
+# 2. Login to Docker Hub
 docker login -u romantony
-# Enter your Docker Hub access token when prompted
-```
 
-## Build and Deploy
-
-### Option 1: Using build.sh script
-
-```bash
-export DOCKER_USERNAME=romantony
-./build.sh
-```
-
-### Option 2: Using deploy.sh (builds and pushes)
-
-```bash
-export DOCKER_USERNAME=romantony
-./build.sh
-./deploy.sh
-```
-
-### Option 3: Manual commands
-
-```bash
-# Build
+# 3. Build Docker image with version (takes 20-30 minutes)
 docker build -t romantony/wan2-s2v:1.0.0 .
-docker tag romantony/wan2-s2v:1.0.0 romantony/wan2-s2v:latest
 
-# Push
+# 4. Push to Docker Hub (takes 10-20 minutes)
 docker push romantony/wan2-s2v:1.0.0
-docker push romantony/wan2-s2v:latest
+```
+
+## Complete One-Liner
+
+```bash
+git pull origin main && docker build -t romantony/wan2-s2v:1.0.0 . && docker push romantony/wan2-s2v:1.0.0
 ```
 
 ## Build Time Expectations
@@ -96,13 +82,18 @@ docker push romantony/wan2-s2v:latest
 Once pushed to Docker Hub, you can:
 
 1. Go to [RunPod Serverless Console](https://www.runpod.io/console/serverless)
-2. Create endpoint with `romantony/wan2-s2v:latest`
+2. Create endpoint with `romantony/wan2-s2v:1.0.0`
 3. Configure:
-   - GPU: A100 80GB
-   - Container Disk: 20GB
-   - Volume: 80GB at `/runpod-volume`
-   - Env: `MODEL_CACHE_DIR=/runpod-volume/models`
-4. Deploy and test!
+   - GPU: A100 80GB (or A100 40GB minimum)
+   - Container Disk: 60GB (model included in image)
+   - Container Start Command: `python3 -u handler.py`
+4. Set Environment Variables:
+   - `R2_ACCOUNT_ID=620baa808df08b1a30d448989365f7dd`
+   - `R2_ACCESS_KEY_ID=a69ca34cdcdeb60bad5ed1a07a0dd29d`
+   - `R2_SECRET_ACCESS_KEY=751a95202a9fa1eb9ff7d45e0bba5b57b0c2d1f0d45129f5f67c2486d5d4ae24`
+   - `R2_BUCKET_NAME=storystudio`
+   - `R2_PUBLIC_URL=parentearn.com`
+5. Deploy and test!
 
 ## Troubleshooting
 
@@ -131,7 +122,7 @@ After successful push, you can:
 
 ```bash
 # Remove local images to free space
-docker rmi romantony/wan2-s2v:1.0.0 romantony/wan2-s2v:latest
+docker rmi romantony/wan2-s2v:1.0.0
 
 # Or clean everything
 docker system prune -a

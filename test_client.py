@@ -2,17 +2,19 @@
 
 import runpod
 import base64
+import requests
 from pathlib import Path
 import time
+import json
+import os
 
-# Configuration - UPDATE THESE VALUES
-RUNPOD_API_KEY = "your-runpod-api-key"
-ENDPOINT_ID = "your-endpoint-id"
+# Configuration - Set these as environment variables
+RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY", "your-runpod-api-key")
+ENDPOINT_ID = os.getenv("ENDPOINT_ID", "1tggndzlc063rw")
 
 # Test files
 IMAGE_PATH = "test_image.png"
 AUDIO_PATH = "test_audio.mp3"
-OUTPUT_PATH = "output.mp4"
 
 def encode_file(file_path):
     """Encode file to base64"""
@@ -82,11 +84,8 @@ def test_wan2_serverless():
         print(f"   ✗ No video in result: {result}")
         return False
     
-    # Decode and save video
-    print("\n6. Saving video...")
-    video_bytes = base64.b64decode(result["video"])
-    with open(OUTPUT_PATH, "wb") as f:
-        f.write(video_bytes)
+    # Get video URL from R2
+    print("\n6. Video generated and uploaded to R2...")
     
     total_time = time.time() - start_time
     
@@ -99,7 +98,8 @@ def test_wan2_serverless():
     print(f"Video size: {result['video_size_mb']} MB")
     print(f"Resolution: {result['resolution']}")
     print(f"Sample steps: {result['sample_steps']}")
-    print(f"Output saved to: {OUTPUT_PATH}")
+    print(f"\n🎥 Video URL: {result['video_url']}")
+    print(f"\nOpen this URL in your browser to view the video!")
     print("=" * 60)
     
     return True

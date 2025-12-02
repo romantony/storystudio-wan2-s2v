@@ -10,8 +10,12 @@ echo "================================================"
 echo "Building and Pushing Wan2.2 S2V Docker Image"
 echo "================================================"
 
-# Get the workspace directory (where BUILD.bazel is)
-WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Find workspace root by looking for BUILD.bazel
+WORKSPACE_DIR="${BUILD_WORKSPACE_DIRECTORY:-$(pwd)}"
+if [ ! -f "$WORKSPACE_DIR/Dockerfile" ]; then
+    # If running from bazel, use the actual workspace
+    WORKSPACE_DIR="/workspace/storystudio-wan2-s2v"
+fi
 
 echo "Building Docker image from: $WORKSPACE_DIR"
 cd "$WORKSPACE_DIR"

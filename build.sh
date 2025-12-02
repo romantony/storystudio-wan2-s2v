@@ -14,11 +14,23 @@ echo "================================================"
 echo "Image: ${DOCKER_USERNAME}/${IMAGE_NAME}:${VERSION}"
 echo ""
 
+
+REPO_URL="https://github.com/romantony/storystudio-wan2-s2v.git"
+REPO_DIR="storystudio-wan2-s2v"
+
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
     echo "ERROR: Docker is not installed"
     exit 1
 fi
+
+# Clone repo if not present
+if [ ! -d "$REPO_DIR" ]; then
+    echo "Cloning repository from $REPO_URL ..."
+    git clone $REPO_URL $REPO_DIR
+fi
+
+cd $REPO_DIR
 
 # Build the image
 echo "Building Docker image..."

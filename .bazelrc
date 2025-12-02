@@ -1,0 +1,22 @@
+# Bazel configuration for Docker builds
+
+# Use local resources efficiently
+build --jobs=auto
+build --local_ram_resources=HOST_RAM*.8
+build --local_cpu_resources=HOST_CPUS
+
+# Enable build output
+build --show_progress
+build --show_timestamps
+
+# Docker/OCI specific settings
+build --incompatible_enable_cc_toolchain_resolution
+build --enable_platform_specific_config
+
+# Disable sandbox for Docker builds (needed in containers)
+build --spawn_strategy=local
+build --genrule_strategy=local
+
+# Output settings
+build --color=yes
+build --curses=yes

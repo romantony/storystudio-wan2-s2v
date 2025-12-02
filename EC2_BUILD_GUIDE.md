@@ -52,16 +52,16 @@ git pull origin main
 docker login -u romantony
 
 # 3. Build Docker image with version (takes 20-30 minutes)
-docker build -t romantony/wan2-s2v:1.0.0 .
+docker build -t romantony/wan2-s2v:1.0.2 .
 
 # 4. Push to Docker Hub (takes 10-20 minutes)
-docker push romantony/wan2-s2v:1.0.0
+docker push romantony/wan2-s2v:1.0.2
 ```
 
 ## Complete One-Liner
 
 ```bash
-git pull origin main && docker build -t romantony/wan2-s2v:1.0.0 . && docker push romantony/wan2-s2v:1.0.0
+git pull origin main && docker build -t romantony/wan2-s2v:1.0.2 . && docker push romantony/wan2-s2v:1.0.2
 ```
 
 ## Build Time Expectations
@@ -82,7 +82,7 @@ git pull origin main && docker build -t romantony/wan2-s2v:1.0.0 . && docker pus
 Once pushed to Docker Hub, you can:
 
 1. Go to [RunPod Serverless Console](https://www.runpod.io/console/serverless)
-2. Create endpoint with `romantony/wan2-s2v:1.0.0`
+2. Create endpoint with `romantony/wan2-s2v:1.0.2`
 3. Configure:
    - GPU: A100 80GB (or A100 40GB minimum)
    - Container Disk: 60GB (model included in image)
@@ -122,7 +122,7 @@ After successful push, you can:
 
 ```bash
 # Remove local images to free space
-docker rmi romantony/wan2-s2v:1.0.0
+docker rmi romantony/wan2-s2v:1.0.2
 
 # Or clean everything
 docker system prune -a

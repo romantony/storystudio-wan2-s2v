@@ -25,10 +25,18 @@ def apply_flashattention_patches(wan_dir="/workspace/Wan2.2"):
     print("=" * 70)
     print("Applying FlashAttention Compatibility Patches")
     print("=" * 70)
+    print(f"\nChecking for Wan2.2 at: {wan_dir}")
     
     wan_path = Path(wan_dir)
     if not wan_path.exists():
+        # List workspace contents for debugging
+        workspace = Path("/workspace")
+        if workspace.exists():
+            print(f"\nWorkspace contents: {list(workspace.iterdir())}")
         raise RuntimeError(f"Wan2.2 directory not found: {wan_dir}")
+    
+    print(f"✓ Found Wan2.2 directory")
+    print(f"Contents: {list(wan_path.iterdir())[:10]}")
     
     # Phase 1: Patch attention.py
     print("\n[1/3] Patching wan/modules/attention.py...")

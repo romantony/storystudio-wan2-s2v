@@ -228,8 +228,8 @@ original_load_state_dict = accelerate_modeling.load_state_dict
 
 def patched_load_state_dict(checkpoint_file, device_map=None):
     '''Force accelerate to load safetensors to CPU, avoiding rust backend device issues'''
-    # Load to CPU first, then accelerate will move to correct device
-    return original_load_state_dict(checkpoint_file, device_map="cpu")
+    # Pass None to load to CPU, not the string "cpu" which causes AttributeError
+    return original_load_state_dict(checkpoint_file, device_map=None)
 
 accelerate_modeling.load_state_dict = patched_load_state_dict
 print("Wrapper: Accelerate patched for CPU loading", flush=True)

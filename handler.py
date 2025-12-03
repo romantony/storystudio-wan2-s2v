@@ -2,7 +2,14 @@
 RunPod Serverless Handler for Wan2.2 S2V
 Compatible with RunPod's serverless architecture
 """
+# CRITICAL: DO NOT set CUDA_VISIBLE_DEVICES here!
+# RunPod sets this dynamically and PyTorch must see the correct value at first import.
+# Setting it ourselves before RunPod can cause "CUDA unknown error".
 import os
+
+# Only set CUDA_DEVICE_ORDER for consistent GPU ordering (safe to set early)
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+
 import runpod
 import subprocess
 import tempfile
@@ -15,8 +22,9 @@ from typing import Dict, Any
 from datetime import datetime
 from huggingface_hub import snapshot_download
 
-# Don't import torch at module level - RunPod may modify CUDA_VISIBLE_DEVICES after import
-# Import it lazily when needed to avoid CUDA initialization conflicts
+# Note: torch will be imported lazily in load_model() to avoid early CUDA initialization
+# This prevents the "CUDA unknown error" that occurs when torch is imported
+# before CUDA_VISIBLE_DEVICES is set
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
@@ -50,17 +58,16 @@ class ModelConfig:
             return
         
         print(f"Loading model: {MODEL_ID}")
+        print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
         
-        # Ensure CUDA_VISIBLE_DEVICES is set BEFORE importing torch
-        if 'CUDA_VISIBLE_DEVICES' not in os.environ:
-            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-            print("Set CUDA_VISIBLE_DEVICES=0")
-        
-        # Lazy import torch AFTER setting CUDA environment
+        # Import torch lazily - RunPod should have set CUDA_VISIBLE_DEVICES by now
         import torch
         
         # Verify CUDA availability
         if not torch.cuda.is_available():
+            print(f"Error: CUDA not available!")
+            print(f"CUDA_VISIBLE_DEVICES = {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
+            print(f"CUDA_DEVICE_ORDER = {os.environ.get('CUDA_DEVICE_ORDER', 'NOT SET')}")
             raise RuntimeError("CUDA is not available. GPU is required for this model.")
         
         print(f"✓ CUDA available: {torch.cuda.get_device_name(0)}")
@@ -318,6 +325,7 @@ exec(open('{WAN_DIR}/generate.py').read())
 
 # Initialize on container startup
 print("Initializing Wan2.2 S2V handler...")
+print(f"CUDA_VISIBLE_DEVICES = {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
 
 # Apply FlashAttention patches (must be done before model loading)
 print("Applying FlashAttention compatibility patches...")
@@ -325,9 +333,8 @@ from patches.apply_patches import apply_flashattention_patches
 apply_flashattention_patches()
 print("✓ Patches applied")
 
-# Don't load model or initialize CUDA here - RunPod sets CUDA_VISIBLE_DEVICES after import
-# Model loading happens on first job request
-print("✓ Handler ready (GPU will be initialized on first request)")
+# Model loading happens on first job request to avoid cold start timeout
+print("✓ Handler ready (model will be loaded on first request)")
 
 # Start RunPod serverless handler
 runpod.serverless.start({"handler": generate_video})

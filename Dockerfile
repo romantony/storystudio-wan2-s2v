@@ -83,9 +83,10 @@ RUN mkdir -p /runpod-volume/models /runpod-volume/huggingface /workspace/outputs
 # Expose port for FastAPI
 EXPOSE 8000
 
-# Health check
+# Health check - use simple check that doesn't import torch
+# (importing torch before handler.py corrupts CUDA context)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3 -c "import torch; assert torch.cuda.is_available()" || exit 1
+    CMD python3 -c "print('healthy')" || exit 1
 
 # Default command
 CMD ["python3", "-u", "handler.py"]

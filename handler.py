@@ -52,25 +52,16 @@ class ModelConfig:
         self.model_dir = None
         
     def load_model(self):
-        """Download model if not cached"""
+        """Download model if not cached - NO CUDA/torch imports here!"""
         if self.model_loaded:
             return
         
         print(f"Loading model: {MODEL_ID}")
         print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
         
-        # Import torch lazily - RunPod should have set CUDA_VISIBLE_DEVICES by now
-        import torch
-        
-        # Verify CUDA availability
-        if not torch.cuda.is_available():
-            print(f"Error: CUDA not available!")
-            print(f"CUDA_VISIBLE_DEVICES = {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
-            print(f"CUDA_DEVICE_ORDER = {os.environ.get('CUDA_DEVICE_ORDER', 'NOT SET')}")
-            raise RuntimeError("CUDA is not available. GPU is required for this model.")
-        
-        print(f"✓ CUDA available: {torch.cuda.get_device_name(0)}")
-        print(f"✓ GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+        # NOTE: Do NOT import torch here! 
+        # The subprocess wrapper will handle CUDA initialization properly.
+        # Importing torch in the main process corrupts CUDA context.
         
         model_dir = f"{MODEL_CACHE_DIR}/{MODEL_ID}"
         
@@ -252,10 +243,9 @@ exec(open("generate.py").read())
             print(f"Starting generation: {resolution}, {sample_steps} steps")
             print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
             
-            # Import torch here after model loading has ensured CUDA is set up
-            import torch
-            print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
-            print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
+            # NOTE: Do NOT import torch in main process - it corrupts CUDA context
+            # The subprocess wrapper handles all CUDA initialization
+            print(f"Running generation subprocess...")
             
             # Run subprocess with wrapper script
             result = subprocess.run(

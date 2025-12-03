@@ -8,9 +8,7 @@ on:
 env:
   DOCKER_USERNAME: romantony
   IMAGE_NAME: wan2-s2v
-  VERSION: 1.1.22
-
-jobs:
+      VERSION: 1.1.24jobs:
   build-and-push:
     runs-on: ubuntu-latest
     

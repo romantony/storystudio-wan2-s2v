@@ -206,11 +206,28 @@ print(f"Wrapper: CUDA_VISIBLE_DEVICES={{os.environ['CUDA_VISIBLE_DEVICES']}}", f
 import torch
 print(f"Wrapper: Initializing CUDA context...", flush=True)
 if torch.cuda.is_available():
-    # Force CUDA initialization by creating a small tensor
-    _ = torch.zeros(1).cuda()
+    torch.cuda.set_device(0)
+    device = torch.device('cuda:0')
+    test_tensor = torch.zeros(1, device=device)
+    torch.cuda.synchronize()
     print(f"Wrapper: CUDA initialized on {{torch.cuda.get_device_name(0)}}", flush=True)
 else:
     print("Wrapper: WARNING - CUDA not available!", flush=True)
+    sys.exit(1)
+
+# Workaround: safetensors Rust backend may not recognize cuda:0 properly in some environments
+# Force loading to CPU and let PyTorch handle GPU transfer (still faster than pickle)
+print("Wrapper: Patching accelerate to use CPU device for safetensors loading...", flush=True)
+from accelerate.utils import modeling as accelerate_modeling
+original_load_state_dict = accelerate_modeling.load_state_dict
+
+def patched_load_state_dict(checkpoint_file, device_map=None):
+    '''Force accelerate to load safetensors to CPU, avoiding rust backend device issues'''
+    # Load to CPU first, then accelerate will move to correct device
+    return original_load_state_dict(checkpoint_file, device_map="cpu")
+
+accelerate_modeling.load_state_dict = patched_load_state_dict
+print("Wrapper: Accelerate patched for CPU loading", flush=True)
 
 # Now run generate.py with the initialized CUDA context
 os.chdir('{WAN_DIR}')

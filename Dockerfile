@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MODEL_CACHE_DIR=/runpod-volume \
     HF_HOME=/runpod-volume/huggingface \
     PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512 \
-    CUDA_VISIBLE_DEVICES=0
+    
 
 # Install minimal system dependencies (runtime only, no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
 from huggingface_hub import snapshot_download
+import torch
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
@@ -48,6 +49,13 @@ class ModelConfig:
         
         print(f"Loading model: {MODEL_ID}")
         model_dir = f"{MODEL_CACHE_DIR}/{MODEL_ID}"
+        # Ensure CUDA devices are managed by runtime, not overridden
+        os.environ.pop('CUDA_VISIBLE_DEVICES', None)
+        # Early check to surface CUDA availability clearly
+        try:
+            _ = torch.cuda.is_available()
+        except Exception:
+            pass
         
         if not Path(model_dir).exists():
             print(f"Downloading model (~49GB)...")

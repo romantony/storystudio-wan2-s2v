@@ -76,7 +76,7 @@ RUN pip install --no-cache-dir \
     omegaconf==2.3.0 \
     safetensors==0.4.5 \
     tokenizers==0.21.0 \
-    huggingface-hub==0.26.5 \
+    huggingface-hub==0.30.0 \
     easydict==1.13 \
     ftfy==6.3.1 \
     requests==2.32.3 \

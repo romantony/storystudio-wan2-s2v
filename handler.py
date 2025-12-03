@@ -198,19 +198,25 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
             
-            # Debug: Print CUDA environment
-            print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')}")
+            # Prepare environment for subprocess
+            subprocess_env = os.environ.copy()
+            # Explicitly set CUDA_VISIBLE_DEVICES if not already set
+            if 'CUDA_VISIBLE_DEVICES' not in subprocess_env:
+                subprocess_env['CUDA_VISIBLE_DEVICES'] = '0'
+                print(f"Set CUDA_VISIBLE_DEVICES=0 for subprocess")
+            
+            print(f"CUDA_VISIBLE_DEVICES: {subprocess_env.get('CUDA_VISIBLE_DEVICES')}")
             print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
             print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
             
-            # Pass environment to subprocess (includes CUDA settings)
+            # Run subprocess with explicit CUDA environment
             result = subprocess.run(
                 cmd,
                 cwd=WAN_DIR,
                 capture_output=True,
                 text=True,
                 timeout=3600,  # 1 hour timeout
-                env=os.environ.copy()
+                env=subprocess_env
             )
             
             if result.returncode != 0:

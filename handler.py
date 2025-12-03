@@ -197,7 +197,7 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             size = RESOLUTION_MAP[resolution]
             
             # Create wrapper script to handle CUDA initialization for subprocess
-            # This is needed because safetensors rust backend needs proper CUDA setup
+            # This is needed because safetensors rust backend has issues with cuda:0
             wrapper_script = Path(tmpdir) / "run_generate.py"
             wrapper_script.write_text(f'''#!/usr/bin/env python
 import os
@@ -207,13 +207,21 @@ import sys
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
-# Initialize PyTorch CUDA context
+# Initialize PyTorch CUDA context first
 import torch
 torch.cuda.init()
 torch.cuda.set_device(0)
-# Force CUDA context creation
 _ = torch.zeros(1, device="cuda:0")
 print(f"CUDA initialized: {{torch.cuda.get_device_name(0)}}", flush=True)
+
+# Patch safetensors to load to CPU (workaround for rust backend cuda:0 issue)
+from safetensors import torch as safetensors_torch
+_original_load = safetensors_torch.load_file
+def _patched_load(filename, device="cpu"):
+    # Always load to CPU first, PyTorch will move to GPU as needed
+    return _original_load(filename, device="cpu")
+safetensors_torch.load_file = _patched_load
+print("Patched safetensors to load via CPU", flush=True)
 
 # Change to Wan2.2 directory and add to path
 os.chdir("{WAN_DIR}")

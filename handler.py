@@ -190,17 +190,34 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Build generation command
             size = RESOLUTION_MAP[resolution]
             
-            # Create a wrapper script that sets up CUDA environment before calling Python
-            wrapper_script = Path(tmpdir) / "run_generation.sh"
-            wrapper_script.write_text(f"""#!/bin/bash
-set -e
-export CUDA_VISIBLE_DEVICES=0
-export CUDA_DEVICE_ORDER=PCI_BUS_ID
-echo "Subprocess CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
-ls -la /dev/nvidia* || echo "No /dev/nvidia* devices"
-nvidia-smi || echo "nvidia-smi failed"
-cd {WAN_DIR}
-exec python generate.py "$@"
+            # Create a Python wrapper that initializes CUDA before running generate.py
+            wrapper_script = Path(tmpdir) / "cuda_init_wrapper.py"
+            wrapper_script.write_text(f"""#!/usr/bin/env python
+import os
+import sys
+
+# Force CUDA environment before any imports
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+
+print(f"Wrapper: CUDA_VISIBLE_DEVICES={{os.environ['CUDA_VISIBLE_DEVICES']}}", flush=True)
+
+# Initialize PyTorch CUDA context early
+import torch
+print(f"Wrapper: Initializing CUDA context...", flush=True)
+if torch.cuda.is_available():
+    # Force CUDA initialization by creating a small tensor
+    _ = torch.zeros(1).cuda()
+    print(f"Wrapper: CUDA initialized on {{torch.cuda.get_device_name(0)}}", flush=True)
+else:
+    print("Wrapper: WARNING - CUDA not available!", flush=True)
+
+# Now run generate.py with the initialized CUDA context
+sys.path.insert(0, '{WAN_DIR}')
+os.chdir('{WAN_DIR}')
+
+# Import and run generate.py
+import generate
 """)
             wrapper_script.chmod(0o755)
             

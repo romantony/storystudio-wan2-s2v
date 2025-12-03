@@ -28,7 +28,7 @@ pillow==11.0.0
 einops==0.8.0
 omegaconf==2.3.0
 safetensors==0.4.5
-tokenizers==0.20.3
+tokenizers==0.21.0
 huggingface-hub==0.26.5
 easydict==1.13
 ftfy==6.3.1

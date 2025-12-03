@@ -214,9 +214,10 @@ else:
 
 # Now run generate.py with the initialized CUDA context
 os.chdir('{WAN_DIR}')
+# Add Wan2.2 directory to Python path so 'wan' module can be imported
+sys.path.insert(0, '{WAN_DIR}')
 
 # Execute generate.py as a script with the command-line arguments
-# Pass all arguments after the wrapper script name
 exec(open('{WAN_DIR}/generate.py').read())
 """)
             wrapper_script.chmod(0o755)

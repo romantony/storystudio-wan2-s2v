@@ -8,7 +8,7 @@ on:
 env:
   DOCKER_USERNAME: romantony
   IMAGE_NAME: wan2-s2v
-  VERSION: 1.1.20
+  VERSION: 1.1.21
 
 jobs:
   build-and-push:

@@ -213,16 +213,18 @@ else:
     print("Wrapper: WARNING - CUDA not available!", flush=True)
 
 # Now run generate.py with the initialized CUDA context
-sys.path.insert(0, '{WAN_DIR}')
 os.chdir('{WAN_DIR}')
 
-# Import and run generate.py
-import generate
+# Execute generate.py as a script with the command-line arguments
+# Pass all arguments after the wrapper script name
+exec(open('{WAN_DIR}/generate.py').read())
 """)
             wrapper_script.chmod(0o755)
             
             # Build complete command using wrapper script
+            # The wrapper will call generate.py, so we need to set sys.argv for argparse
             cmd = [
+                "python",
                 str(wrapper_script),
                 "--task", "s2v-14B",
                 "--size", size,

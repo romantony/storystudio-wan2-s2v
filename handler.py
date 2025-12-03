@@ -49,9 +49,6 @@ class ModelConfig:
         
         print(f"Loading model: {MODEL_ID}")
         
-        # Ensure CUDA devices are managed by runtime, not overridden
-        os.environ.pop('CUDA_VISIBLE_DEVICES', None)
-        
         # Verify CUDA availability
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is not available. GPU is required for this model.")
@@ -200,12 +197,15 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
+            
+            # Pass environment to subprocess (includes CUDA settings)
             result = subprocess.run(
                 cmd,
                 cwd=WAN_DIR,
                 capture_output=True,
                 text=True,
-                timeout=3600  # 1 hour timeout
+                timeout=3600,  # 1 hour timeout
+                env=os.environ.copy()
             )
             
             if result.returncode != 0:

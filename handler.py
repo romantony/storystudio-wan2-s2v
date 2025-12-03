@@ -2,11 +2,16 @@
 RunPod Serverless Handler for Wan2.2 S2V
 Compatible with RunPod's serverless architecture
 """
+import os
+# Set CUDA_VISIBLE_DEVICES before any CUDA initialization
+# This prevents "CUDA unknown error" when CUDA_VISIBLE_DEVICES changes after program start
+if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
 import runpod
 import subprocess
 import tempfile
 import base64
-import os
 import time
 import boto3
 import requests
@@ -197,31 +202,20 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
-            
-            # Prepare environment for subprocess
-            subprocess_env = os.environ.copy()
-            # Force CUDA_VISIBLE_DEVICES to be set
-            subprocess_env['CUDA_VISIBLE_DEVICES'] = '0'
-            # Also set LD_LIBRARY_PATH to ensure CUDA libraries are found
-            if 'LD_LIBRARY_PATH' not in subprocess_env:
-                subprocess_env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:/usr/local/nvidia/lib64'
-            
-            print(f"CUDA_VISIBLE_DEVICES: {subprocess_env.get('CUDA_VISIBLE_DEVICES')}")
-            print(f"LD_LIBRARY_PATH: {subprocess_env.get('LD_LIBRARY_PATH', 'not set')}")
+            print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
             print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
             print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
             
             # Use bash wrapper to ensure CUDA environment is fully set up
             cmd = ["bash", "-c", 
-                   f"cd {WAN_DIR} && CUDA_VISIBLE_DEVICES=0 python generate.py {' '.join(python_args)}"]
+                   f"cd {WAN_DIR} && python generate.py {' '.join(python_args)}"]
             
-            # Run subprocess with explicit CUDA environment
+            # Run subprocess (environment already set at module import)
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=3600,  # 1 hour timeout
-                env=subprocess_env,
                 shell=False
             )
             

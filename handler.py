@@ -2,14 +2,14 @@
 RunPod Serverless Handler for Wan2.2 S2V
 Compatible with RunPod's serverless architecture
 """
-# CRITICAL: DO NOT set CUDA_VISIBLE_DEVICES here!
-# RunPod sets this dynamically and PyTorch must see the correct value at first import.
-# Setting it ourselves before RunPod can cause "CUDA unknown error".
+# CRITICAL: Set CUDA environment at the VERY START before ANY other imports
+# This must be the first code that runs to prevent CUDA initialization issues
+import os as _os
+_os.environ.setdefault('CUDA_VISIBLE_DEVICES', '0')
+_os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+del _os  # Clean up
+
 import os
-
-# Only set CUDA_DEVICE_ORDER for consistent GPU ordering (safe to set early)
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-
 import runpod
 import subprocess
 import tempfile
@@ -23,8 +23,6 @@ from datetime import datetime
 from huggingface_hub import snapshot_download
 
 # Note: torch will be imported lazily in load_model() to avoid early CUDA initialization
-# This prevents the "CUDA unknown error" that occurs when torch is imported
-# before CUDA_VISIBLE_DEVICES is set
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"

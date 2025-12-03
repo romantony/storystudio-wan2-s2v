@@ -3,8 +3,13 @@ RunPod Serverless Handler for Wan2.2 S2V
 Compatible with RunPod's serverless architecture
 Using RunPod's official PyTorch base image for proper CUDA integration
 """
+# FIRST: Set CUDA environment variables before ANY imports
+# This must happen before any module that might import torch
 import os
-import torch
+os.environ.setdefault('CUDA_VISIBLE_DEVICES', '0')
+os.environ.setdefault('CUDA_DEVICE_ORDER', 'PCI_BUS_ID')
+
+# Now import other modules (but NOT torch - it will be imported lazily)
 import runpod
 import subprocess
 import tempfile
@@ -16,6 +21,9 @@ from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
 from huggingface_hub import snapshot_download
+
+# NOTE: Do NOT import torch at module level!
+# It will be imported in load_model() after CUDA env vars are set.
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
@@ -51,7 +59,10 @@ class ModelConfig:
         print(f"Loading model: {MODEL_ID}")
         print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
         
-        # Verify CUDA availability (torch was imported at module level)
+        # Import torch lazily - RunPod should have set CUDA_VISIBLE_DEVICES by now
+        import torch
+        
+        # Verify CUDA availability
         if not torch.cuda.is_available():
             print(f"Error: CUDA not available!")
             print(f"CUDA_VISIBLE_DEVICES = {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
@@ -264,11 +275,7 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
 
 # Initialize on container startup
 print("Initializing Wan2.2 S2V handler...")
-print(f"PyTorch version: {torch.__version__}")
-print(f"CUDA available: {torch.cuda.is_available()}")
-if torch.cuda.is_available():
-    print(f"CUDA device: {torch.cuda.get_device_name(0)}")
-    print(f"CUDA version: {torch.version.cuda}")
+print("Note: PyTorch/CUDA will be initialized on first job (lazy loading)")
 
 # Apply FlashAttention patches (must be done before model loading)
 print("Applying FlashAttention compatibility patches...")

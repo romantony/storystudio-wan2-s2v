@@ -51,13 +51,13 @@ class ModelConfig:
         
         print(f"Loading model: {MODEL_ID}")
         
-        # Lazy import torch to avoid CUDA initialization conflicts
-        import torch
-        
-        # Ensure CUDA_VISIBLE_DEVICES is set
+        # Ensure CUDA_VISIBLE_DEVICES is set BEFORE importing torch
         if 'CUDA_VISIBLE_DEVICES' not in os.environ:
             os.environ['CUDA_VISIBLE_DEVICES'] = '0'
             print("Set CUDA_VISIBLE_DEVICES=0")
+        
+        # Lazy import torch AFTER setting CUDA environment
+        import torch
         
         # Verify CUDA availability
         if not torch.cuda.is_available():

@@ -196,11 +196,37 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Build generation command
             size = RESOLUTION_MAP[resolution]
             
-            # Build command to run generate.py directly
-            # RunPod's PyTorch base image has CUDA properly configured
+            # Create wrapper script to handle CUDA initialization for subprocess
+            # This is needed because safetensors rust backend needs proper CUDA setup
+            wrapper_script = Path(tmpdir) / "run_generate.py"
+            wrapper_script.write_text(f'''#!/usr/bin/env python
+import os
+import sys
+
+# Set CUDA environment before any imports
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+
+# Initialize PyTorch CUDA context
+import torch
+torch.cuda.init()
+torch.cuda.set_device(0)
+# Force CUDA context creation
+_ = torch.zeros(1, device="cuda:0")
+print(f"CUDA initialized: {{torch.cuda.get_device_name(0)}}", flush=True)
+
+# Change to Wan2.2 directory and add to path
+os.chdir("{WAN_DIR}")
+sys.path.insert(0, "{WAN_DIR}")
+
+# Run generate.py
+exec(open("generate.py").read())
+''')
+            
+            # Build command using wrapper
             cmd = [
                 "python", "-u",
-                f"{WAN_DIR}/generate.py",
+                str(wrapper_script),
                 "--task", "s2v-14B",
                 "--size", size,
                 "--ckpt_dir", model_config.model_dir,

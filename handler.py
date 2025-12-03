@@ -190,10 +190,23 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Build generation command
             size = RESOLUTION_MAP[resolution]
             
-            # Build complete command with proper argument list (no shell interpolation)
+            # Create a wrapper script that sets up CUDA environment before calling Python
+            wrapper_script = Path(tmpdir) / "run_generation.sh"
+            wrapper_script.write_text(f"""#!/bin/bash
+set -e
+export CUDA_VISIBLE_DEVICES=0
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
+echo "Subprocess CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+ls -la /dev/nvidia* || echo "No /dev/nvidia* devices"
+nvidia-smi || echo "nvidia-smi failed"
+cd {WAN_DIR}
+exec python generate.py "$@"
+""")
+            wrapper_script.chmod(0o755)
+            
+            # Build complete command using wrapper script
             cmd = [
-                "python",
-                f"{WAN_DIR}/generate.py",
+                str(wrapper_script),
                 "--task", "s2v-14B",
                 "--size", size,
                 "--ckpt_dir", model_config.model_dir,
@@ -216,10 +229,9 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
             print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
             
-            # Run subprocess (environment already set at module import, no shell needed)
+            # Run subprocess with wrapper script
             result = subprocess.run(
                 cmd,
-                cwd=WAN_DIR,
                 capture_output=True,
                 text=True,
                 timeout=3600  # 1 hour timeout

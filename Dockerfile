@@ -81,7 +81,12 @@ RUN pip install --no-cache-dir \
     ftfy==6.3.1 \
     requests==2.32.3 \
     boto3==1.35.76 \
-    runpod==1.7.5 && \
+    runpod==1.7.5 \
+    filelock \
+    packaging>=20.0 \
+    pyyaml>=5.1 \
+    regex \
+    tqdm && \
     rm -rf /root/.cache/pip && \
     pip cache purge
 

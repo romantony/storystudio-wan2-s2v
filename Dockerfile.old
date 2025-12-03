@@ -1,29 +1,36 @@
-# Wan2.2 S2V RunPod Serverless Dockerfile - Optimized for size
-# Model downloads at runtime, stored on network volume
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS runtime
+# Wan2.2 S2V RunPod Serverless Dockerfile
+# Optimized for A100-80GB with FlashAttention compatibility patches
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH="/usr/local/bin:$PATH" \
     MODEL_CACHE_DIR=/runpod-volume \
-    HF_HOME=/runpod-volume/huggingface \
     PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512 \
     CUDA_VISIBLE_DEVICES=0
 
-# Install minimal system dependencies (runtime only, no build tools)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
     python3.11-dev \
     python3-pip \
     git \
     wget \
+    curl \
     ffmpeg \
     libsm6 \
     libxext6 \
+    libxrender-dev \
     libgomp1 \
     libglib2.0-0 \
     libgl1-mesa-glx \
+    build-essential \
+    cmake \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -31,26 +38,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
-# Upgrade pip
+# Upgrade pip and install build tools
 RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
     rm -rf /root/.cache/pip
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy requirements
+# Copy requirements and install Python dependencies in batches to save space
 COPY requirements.txt .
 
-# Install PyTorch (CPU build is smaller, but we need CUDA for inference)
-RUN pip install --no-cache-dir \
-    torch==2.4.0 \
-    torchvision==0.19.0 \
-    torchaudio==2.4.0 \
+# Install PyTorch first (largest packages) and clean up
+RUN pip install --no-cache-dir torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 \
     --extra-index-url https://download.pytorch.org/whl/cu121 && \
     rm -rf /root/.cache/pip && \
     pip cache purge
 
-# Install transformers and diffusers
+# Install transformers and related packages
 RUN pip install --no-cache-dir \
     transformers==4.47.0 \
     diffusers==0.31.0 \
@@ -86,7 +90,13 @@ RUN pip install --no-cache-dir \
     rm -rf /root/.cache/pip && \
     pip cache purge
 
-# Clone Wan2.2 repository (code only, no models)
+# Install optional packages separately
+RUN pip install --no-cache-dir decord || echo "Warning: decord installation failed, continuing without it" && \
+    pip install --no-cache-dir dashscope || echo "Warning: dashscope installation failed, continuing without it" && \
+    rm -rf /root/.cache/pip && \
+    pip cache purge
+
+# Clone Wan2.2 repository
 RUN git clone https://github.com/Wan-Video/Wan2.2.git && \
     rm -rf Wan2.2/.git
 
@@ -100,14 +110,14 @@ COPY start.sh .
 RUN chmod +x start.sh
 
 # Create directories for models and outputs
-RUN mkdir -p /runpod-volume/models /runpod-volume/huggingface /workspace/outputs
+RUN mkdir -p /runpod-volume/models /workspace/outputs
 
-# Expose port for FastAPI
+# Expose port for FastAPI (for testing/pod mode)
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python3 -c "import torch; assert torch.cuda.is_available()" || exit 1
 
-# Default command
+# Default command - runs RunPod serverless handler
 CMD ["python3", "-u", "handler.py"]

@@ -17,6 +17,7 @@ from huggingface_hub import snapshot_download
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
+# Network volume path - RunPod mounts at /runpod-volume by default
 MODEL_CACHE_DIR = os.getenv("MODEL_CACHE_DIR", "/runpod-volume/models")
 WAN_DIR = "/workspace/Wan2.2"
 

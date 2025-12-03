@@ -1,72 +1,44 @@
-# Wan2.2 S2V RunPod Serverless Dockerfile - Optimized for size
-# Model downloads at runtime, stored on network volume
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS runtime
+# Wan2.2 S2V RunPod Serverless Dockerfile
+# Using RunPod's official PyTorch image for proper CUDA integration
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    PATH="/usr/local/bin:$PATH" \
     MODEL_CACHE_DIR=/runpod-volume \
     HF_HOME=/runpod-volume/huggingface \
     PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
-# Install minimal system dependencies (runtime only, no build tools)
+# Install additional system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 \
-    python3.11-dev \
-    python3-pip \
-    git \
-    wget \
     ffmpeg \
     libsm6 \
     libxext6 \
-    libgomp1 \
     libglib2.0-0 \
     libgl1-mesa-glx \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Set Python 3.11 as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-
-# Upgrade pip
-RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    rm -rf /root/.cache/pip
 
 # Set working directory
 WORKDIR /workspace
 
-# Copy requirements
-COPY requirements.txt .
-
-# Install PyTorch (CPU build is smaller, but we need CUDA for inference)
-RUN pip install --no-cache-dir \
-    torch==2.4.0 \
-    torchvision==0.19.0 \
-    torchaudio==2.4.0 \
-    --extra-index-url https://download.pytorch.org/whl/cu121 && \
-    rm -rf /root/.cache/pip && \
-    pip cache purge
-
-# Install transformers and diffusers
+# Install Python dependencies (PyTorch already included in base image)
 RUN pip install --no-cache-dir \
     transformers==4.51.3 \
     diffusers==0.31.0 \
     accelerate==1.1.1 \
-    peft==0.17.0 && \
-    rm -rf /root/.cache/pip && \
-    pip cache purge
-
-# Install remaining dependencies
-RUN pip install --no-cache-dir \
+    peft==0.17.0 \
     librosa==0.10.2 \
     soundfile==0.12.1 \
     opencv-python-headless==4.10.0.84 \
     imageio==2.36.1 \
     imageio-ffmpeg==0.5.1 \
     fastapi==0.115.5 \
-    uvicorn[standard]==0.32.1 \
+    "uvicorn[standard]==0.32.1" \
     python-multipart==0.0.20 \
     pydantic==2.10.3 \
     numpy==1.26.4 \
@@ -82,27 +54,14 @@ RUN pip install --no-cache-dir \
     requests==2.32.3 \
     boto3==1.35.76 \
     runpod==1.7.5 \
+    decord \
+    dashscope \
     filelock \
-    packaging>=20.0 \
-    pyyaml>=5.1 \
+    "packaging>=20.0" \
+    "pyyaml>=5.1" \
     regex \
     tqdm && \
     rm -rf /root/.cache/pip && \
-    pip cache purge
-
-# Install decord and dashscope separately (requires system libraries)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    libavcodec-dev \
-    libavformat-dev \
-    libavutil-dev \
-    libswscale-dev && \
-    pip install --no-cache-dir decord dashscope && \
-    apt-get remove -y build-essential cmake && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /root/.cache/pip && \
     pip cache purge
 
 # Clone Wan2.2 repository (code only, no models)

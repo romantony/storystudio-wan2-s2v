@@ -1,15 +1,10 @@
 """
 RunPod Serverless Handler for Wan2.2 S2V
 Compatible with RunPod's serverless architecture
+Using RunPod's official PyTorch base image for proper CUDA integration
 """
-# CRITICAL: Set CUDA environment at the VERY START before ANY other imports
-# This must be the first code that runs to prevent CUDA initialization issues
-import os as _os
-_os.environ.setdefault('CUDA_VISIBLE_DEVICES', '0')
-_os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-del _os  # Clean up
-
 import os
+import torch
 import runpod
 import subprocess
 import tempfile
@@ -21,8 +16,6 @@ from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
 from huggingface_hub import snapshot_download
-
-# Note: torch will be imported lazily in load_model() to avoid early CUDA initialization
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
@@ -58,10 +51,7 @@ class ModelConfig:
         print(f"Loading model: {MODEL_ID}")
         print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
         
-        # Import torch lazily - RunPod should have set CUDA_VISIBLE_DEVICES by now
-        import torch
-        
-        # Verify CUDA availability
+        # Verify CUDA availability (torch was imported at module level)
         if not torch.cuda.is_available():
             print(f"Error: CUDA not available!")
             print(f"CUDA_VISIBLE_DEVICES = {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
@@ -195,60 +185,11 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Build generation command
             size = RESOLUTION_MAP[resolution]
             
-            # Create a Python wrapper that initializes CUDA before running generate.py
-            wrapper_script = Path(tmpdir) / "cuda_init_wrapper.py"
-            wrapper_script.write_text(f"""#!/usr/bin/env python
-import os
-import sys
-
-# Force CUDA environment before any imports
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-
-print(f"Wrapper: CUDA_VISIBLE_DEVICES={{os.environ['CUDA_VISIBLE_DEVICES']}}", flush=True)
-
-# Initialize PyTorch CUDA context early
-import torch
-print(f"Wrapper: Initializing CUDA context...", flush=True)
-if torch.cuda.is_available():
-    torch.cuda.set_device(0)
-    device = torch.device('cuda:0')
-    test_tensor = torch.zeros(1, device=device)
-    torch.cuda.synchronize()
-    print(f"Wrapper: CUDA initialized on {{torch.cuda.get_device_name(0)}}", flush=True)
-else:
-    print("Wrapper: WARNING - CUDA not available!", flush=True)
-    sys.exit(1)
-
-# Workaround: safetensors Rust backend may not recognize cuda:0 properly in some environments
-# Force loading to CPU and let PyTorch handle GPU transfer (still faster than pickle)
-print("Wrapper: Patching accelerate to use CPU device for safetensors loading...", flush=True)
-from accelerate.utils import modeling as accelerate_modeling
-original_load_state_dict = accelerate_modeling.load_state_dict
-
-def patched_load_state_dict(checkpoint_file, device_map=None):
-    '''Force accelerate to load safetensors to CPU, avoiding rust backend device issues'''
-    # Pass None to load to CPU, not the string "cpu" which causes AttributeError
-    return original_load_state_dict(checkpoint_file, device_map=None)
-
-accelerate_modeling.load_state_dict = patched_load_state_dict
-print("Wrapper: Accelerate patched for CPU loading", flush=True)
-
-# Now run generate.py with the initialized CUDA context
-os.chdir('{WAN_DIR}')
-# Add Wan2.2 directory to Python path so 'wan' module can be imported
-sys.path.insert(0, '{WAN_DIR}')
-
-# Execute generate.py as a script with the command-line arguments
-exec(open('{WAN_DIR}/generate.py').read())
-""")
-            wrapper_script.chmod(0o755)
-            
-            # Build complete command using wrapper script
-            # The wrapper will call generate.py, so we need to set sys.argv for argparse
+            # Build command to run generate.py directly
+            # RunPod's PyTorch base image has CUDA properly configured
             cmd = [
-                "python",
-                str(wrapper_script),
+                "python", "-u",
+                f"{WAN_DIR}/generate.py",
                 "--task", "s2v-14B",
                 "--size", size,
                 "--ckpt_dir", model_config.model_dir,
@@ -323,7 +264,11 @@ exec(open('{WAN_DIR}/generate.py').read())
 
 # Initialize on container startup
 print("Initializing Wan2.2 S2V handler...")
-print(f"CUDA_VISIBLE_DEVICES = {os.environ.get('CUDA_VISIBLE_DEVICES', 'NOT SET')}")
+print(f"PyTorch version: {torch.__version__}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"CUDA device: {torch.cuda.get_device_name(0)}")
+    print(f"CUDA version: {torch.version.cuda}")
 
 # Apply FlashAttention patches (must be done before model loading)
 print("Applying FlashAttention compatibility patches...")

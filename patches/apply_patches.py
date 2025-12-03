@@ -55,10 +55,18 @@ def apply_flashattention_patches(wan_dir="/workspace/Wan2.2"):
     
     # Remove assertion that blocks execution
     if 'assert FLASH_ATTN_2_AVAILABLE' in attention_code:
+        import re
+        # Case 1: assertion immediately after an else: block
+        attention_code = re.sub(
+            r"(else\s*:\s*)(\n\s*)(assert\s+FLASH_ATTN_2_AVAILABLE.*)",
+            r"\1\2pass  # [PATCHED] Assertion removed",
+            attention_code,
+        )
+
+        # Case 2: standalone assertion line (preserve indentation)
         patched_lines = []
         for line in attention_code.split('\n'):
-            if 'assert FLASH_ATTN_2_AVAILABLE' in line:
-                # Preserve original indentation (spaces or tabs)
+            if re.search(r"^\s*assert\s+FLASH_ATTN_2_AVAILABLE", line):
                 leading = line[:len(line) - len(line.lstrip())]
                 patched_lines.append(f"{leading}pass  # [PATCHED] Assertion removed")
             else:

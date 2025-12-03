@@ -85,6 +85,21 @@ RUN pip install --no-cache-dir \
     rm -rf /root/.cache/pip && \
     pip cache purge
 
+# Install decord separately (requires system libraries)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev && \
+    pip install --no-cache-dir decord && \
+    apt-get remove -y build-essential cmake && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /root/.cache/pip && \
+    pip cache purge
+
 # Clone Wan2.2 repository (code only, no models)
 RUN git clone https://github.com/Wan-Video/Wan2.2.git && \
     rm -rf Wan2.2/.git

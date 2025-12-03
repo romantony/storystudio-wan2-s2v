@@ -190,8 +190,10 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Build generation command
             size = RESOLUTION_MAP[resolution]
             
-            # Build Python command arguments
-            python_args = [
+            # Build complete command with proper argument list (no shell interpolation)
+            cmd = [
+                "python",
+                f"{WAN_DIR}/generate.py",
                 "--task", "s2v-14B",
                 "--size", size,
                 "--ckpt_dir", model_config.model_dir,
@@ -203,7 +205,7 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             ]
             
             if prompt:
-                python_args.extend(["--prompt", prompt])
+                cmd.extend(["--prompt", prompt])
             
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
@@ -214,17 +216,13 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
             print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
             
-            # Use bash wrapper to ensure CUDA environment is fully set up
-            cmd = ["bash", "-c", 
-                   f"cd {WAN_DIR} && python generate.py {' '.join(python_args)}"]
-            
-            # Run subprocess (environment already set at module import)
+            # Run subprocess (environment already set at module import, no shell needed)
             result = subprocess.run(
                 cmd,
+                cwd=WAN_DIR,
                 capture_output=True,
                 text=True,
-                timeout=3600,  # 1 hour timeout
-                shell=False
+                timeout=3600  # 1 hour timeout
             )
             
             if result.returncode != 0:

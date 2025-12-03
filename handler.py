@@ -198,6 +198,11 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
             
+            # Debug: Print CUDA environment
+            print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')}")
+            print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
+            print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
+            
             # Pass environment to subprocess (includes CUDA settings)
             result = subprocess.run(
                 cmd,
@@ -210,6 +215,7 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             
             if result.returncode != 0:
                 print(f"Generation failed: {result.stderr}")
+                print(f"Generation stdout: {result.stdout}")
                 return {"error": f"Generation failed: {result.stderr}"}
             
             # Find generated video
@@ -252,29 +258,15 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
 # Initialize on container startup
 print("Initializing Wan2.2 S2V handler...")
 
-# Force CUDA initialization early
-print("Checking GPU availability...")
-try:
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA not available - GPU required")
-    # Force CUDA context initialization
-    torch.cuda.init()
-    torch.zeros(1).cuda()
-    print(f"✓ GPU initialized: {torch.cuda.get_device_name(0)}")
-    print(f"✓ GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
-except Exception as e:
-    print(f"✗ GPU initialization failed: {e}")
-    raise
-
 # Apply FlashAttention patches (must be done before model loading)
 print("Applying FlashAttention compatibility patches...")
 from patches.apply_patches import apply_flashattention_patches
 apply_flashattention_patches()
 print("✓ Patches applied")
 
-# Load model
-model_config.load_model()
-print("✓ Handler ready")
+# Don't load model or initialize CUDA here - RunPod sets CUDA_VISIBLE_DEVICES after import
+# Model loading happens on first job request
+print("✓ Handler ready (GPU will be initialized on first request)")
 
 # Start RunPod serverless handler
 runpod.serverless.start({"handler": generate_video})

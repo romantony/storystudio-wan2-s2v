@@ -55,12 +55,15 @@ def apply_flashattention_patches(wan_dir="/workspace/Wan2.2"):
     
     # Remove assertion that blocks execution
     if 'assert FLASH_ATTN_2_AVAILABLE' in attention_code:
-        lines = attention_code.split('\n')
-        attention_code = '\n'.join([
-            line if 'assert FLASH_ATTN_2_AVAILABLE' not in line 
-            else '    pass  # [PATCHED] Assertion removed'
-            for line in lines
-        ])
+        patched_lines = []
+        for line in attention_code.split('\n'):
+            if 'assert FLASH_ATTN_2_AVAILABLE' in line:
+                # Preserve original indentation (spaces or tabs)
+                leading = line[:len(line) - len(line.lstrip())]
+                patched_lines.append(f"{leading}pass  # [PATCHED] Assertion removed")
+            else:
+                patched_lines.append(line)
+        attention_code = '\n'.join(patched_lines)
     
     # Add shim for flash_attention import
     if 'def flash_attention(' not in attention_code:

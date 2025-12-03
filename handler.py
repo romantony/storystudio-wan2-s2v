@@ -48,14 +48,18 @@ class ModelConfig:
             return
         
         print(f"Loading model: {MODEL_ID}")
-        model_dir = f"{MODEL_CACHE_DIR}/{MODEL_ID}"
+        
         # Ensure CUDA devices are managed by runtime, not overridden
         os.environ.pop('CUDA_VISIBLE_DEVICES', None)
-        # Early check to surface CUDA availability clearly
-        try:
-            _ = torch.cuda.is_available()
-        except Exception:
-            pass
+        
+        # Verify CUDA availability
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available. GPU is required for this model.")
+        
+        print(f"✓ CUDA available: {torch.cuda.get_device_name(0)}")
+        print(f"✓ GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+        
+        model_dir = f"{MODEL_CACHE_DIR}/{MODEL_ID}"
         
         if not Path(model_dir).exists():
             print(f"Downloading model (~49GB)...")
@@ -247,6 +251,20 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
 
 # Initialize on container startup
 print("Initializing Wan2.2 S2V handler...")
+
+# Force CUDA initialization early
+print("Checking GPU availability...")
+try:
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA not available - GPU required")
+    # Force CUDA context initialization
+    torch.cuda.init()
+    torch.zeros(1).cuda()
+    print(f"✓ GPU initialized: {torch.cuda.get_device_name(0)}")
+    print(f"✓ GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+except Exception as e:
+    print(f"✗ GPU initialization failed: {e}")
+    raise
 
 # Apply FlashAttention patches (must be done before model loading)
 print("Applying FlashAttention compatibility patches...")

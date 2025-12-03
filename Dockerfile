@@ -51,7 +51,7 @@ RUN pip install --no-cache-dir \
 
 # Install transformers and diffusers
 RUN pip install --no-cache-dir \
-    transformers==4.47.0 \
+    transformers==4.51.3 \
     diffusers==0.31.0 \
     accelerate==1.1.1 \
     peft==0.17.0 && \

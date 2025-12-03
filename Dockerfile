@@ -25,6 +25,12 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     libglib2.0-0 \
     libgl1-mesa-glx \
+    build-essential \
+    cmake \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python 3.11 as default
@@ -41,8 +47,11 @@ WORKDIR /workspace
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install RunPod SDK for serverless compatibility
-RUN pip install --no-cache-dir runpod
+# Install decord separately (can fail gracefully - it's optional for some workflows)
+RUN pip install --no-cache-dir decord || echo "Warning: decord installation failed, continuing without it"
+
+# Install dashscope separately (optional API dependency)
+RUN pip install --no-cache-dir dashscope || echo "Warning: dashscope installation failed, continuing without it"
 
 # Clone Wan2.2 repository
 RUN git clone https://github.com/Wan-Video/Wan2.2.git

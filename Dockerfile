@@ -85,7 +85,7 @@ RUN pip install --no-cache-dir \
     rm -rf /root/.cache/pip && \
     pip cache purge
 
-# Install decord separately (requires system libraries)
+# Install decord and dashscope separately (requires system libraries)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -93,7 +93,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libavformat-dev \
     libavutil-dev \
     libswscale-dev && \
-    pip install --no-cache-dir decord && \
+    pip install --no-cache-dir decord dashscope && \
     apt-get remove -y build-essential cmake && \
     apt-get autoremove -y && \
     apt-get clean && \

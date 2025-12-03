@@ -3,11 +3,6 @@ RunPod Serverless Handler for Wan2.2 S2V
 Compatible with RunPod's serverless architecture
 """
 import os
-# Set CUDA_VISIBLE_DEVICES before any CUDA initialization
-# This prevents "CUDA unknown error" when CUDA_VISIBLE_DEVICES changes after program start
-if 'CUDA_VISIBLE_DEVICES' not in os.environ:
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
 import runpod
 import subprocess
 import tempfile
@@ -19,7 +14,9 @@ from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
 from huggingface_hub import snapshot_download
-import torch
+
+# Don't import torch at module level - RunPod may modify CUDA_VISIBLE_DEVICES after import
+# Import it lazily when needed to avoid CUDA initialization conflicts
 
 # Configuration
 MODEL_ID = "Wan-AI/Wan2.2-S2V-14B"
@@ -53,6 +50,14 @@ class ModelConfig:
             return
         
         print(f"Loading model: {MODEL_ID}")
+        
+        # Lazy import torch to avoid CUDA initialization conflicts
+        import torch
+        
+        # Ensure CUDA_VISIBLE_DEVICES is set
+        if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+            print("Set CUDA_VISIBLE_DEVICES=0")
         
         # Verify CUDA availability
         if not torch.cuda.is_available():
@@ -203,6 +208,9 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
             print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+            
+            # Import torch here after model loading has ensured CUDA is set up
+            import torch
             print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
             print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
             

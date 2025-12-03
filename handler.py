@@ -179,9 +179,9 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             
             # Build generation command
             size = RESOLUTION_MAP[resolution]
-            cmd = [
-                "python",
-                f"{WAN_DIR}/generate.py",
+            
+            # Build Python command arguments
+            python_args = [
                 "--task", "s2v-14B",
                 "--size", size,
                 "--ckpt_dir", model_config.model_dir,
@@ -193,30 +193,36 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
             ]
             
             if prompt:
-                cmd.extend(["--prompt", prompt])
+                python_args.extend(["--prompt", prompt])
             
             # Run generation
             print(f"Starting generation: {resolution}, {sample_steps} steps")
             
             # Prepare environment for subprocess
             subprocess_env = os.environ.copy()
-            # Explicitly set CUDA_VISIBLE_DEVICES if not already set
-            if 'CUDA_VISIBLE_DEVICES' not in subprocess_env:
-                subprocess_env['CUDA_VISIBLE_DEVICES'] = '0'
-                print(f"Set CUDA_VISIBLE_DEVICES=0 for subprocess")
+            # Force CUDA_VISIBLE_DEVICES to be set
+            subprocess_env['CUDA_VISIBLE_DEVICES'] = '0'
+            # Also set LD_LIBRARY_PATH to ensure CUDA libraries are found
+            if 'LD_LIBRARY_PATH' not in subprocess_env:
+                subprocess_env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:/usr/local/nvidia/lib64'
             
             print(f"CUDA_VISIBLE_DEVICES: {subprocess_env.get('CUDA_VISIBLE_DEVICES')}")
+            print(f"LD_LIBRARY_PATH: {subprocess_env.get('LD_LIBRARY_PATH', 'not set')}")
             print(f"PyTorch CUDA available: {torch.cuda.is_available()}")
             print(f"PyTorch CUDA device count: {torch.cuda.device_count()}")
+            
+            # Use bash wrapper to ensure CUDA environment is fully set up
+            cmd = ["bash", "-c", 
+                   f"cd {WAN_DIR} && CUDA_VISIBLE_DEVICES=0 python generate.py {' '.join(python_args)}"]
             
             # Run subprocess with explicit CUDA environment
             result = subprocess.run(
                 cmd,
-                cwd=WAN_DIR,
                 capture_output=True,
                 text=True,
                 timeout=3600,  # 1 hour timeout
-                env=subprocess_env
+                env=subprocess_env,
+                shell=False
             )
             
             if result.returncode != 0:

@@ -150,8 +150,8 @@ def generate_video(job: Dict[str, Any]) -> Dict[str, Any]:
         if resolution not in RESOLUTION_MAP:
             return {"error": f"Invalid resolution. Must be one of: {list(RESOLUTION_MAP.keys())}"}
         
-        if not (20 <= sample_steps <= 50):
-            return {"error": "sample_steps must be between 20 and 50"}
+        if not (15 <= sample_steps <= 50):
+            return {"error": "sample_steps must be between 15 and 50"}
         
         # Ensure model is loaded
         if not model_config.model_loaded:

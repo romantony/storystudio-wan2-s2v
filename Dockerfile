@@ -94,6 +94,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python3 -c "print('healthy')" || exit 1
 
-# Default command - use warm model handler (v2)
-# Set HANDLER_VERSION=v1 environment variable to use original subprocess handler
-CMD ["python3", "-u", "handler_v2.py"]
+# Default command - use original handler (v1) for now
+# TODO: Fix model_server.py to handle T5 encoder path correctly for v2
+CMD ["python3", "-u", "handler.py"]
